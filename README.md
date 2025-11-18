@@ -20,8 +20,11 @@ A high-performance web-based canvas application built with Next.js, featuring fr
 - **Pan Tool**: Move around the infinite canvas
 
 ### ✨ Element Manipulation
-- **Select and Move**: Click any element with the Select tool to select it, then drag to reposition
-- **Resize**: Select an element to reveal 8 resize handles (corners and edges)
+- **Click to Select**: Click any single element with the Select tool
+- **Rectangular Selection**: Drag to draw a selection rectangle and select multiple elements at once (like GoodNotes/FreeNotes)
+- **Move Elements**: Click and drag selected elements to reposition them
+- **Resize Elements**: Select elements to reveal 8 resize handles (corners and edges)
+- **Multi-Selection**: Select multiple elements with rectangular selection and move/resize them together
 - **Visual Feedback**: Selected elements show blue bounding boxes with interactive handles
 - Works with all element types: freehand drawings, shapes, lines, and text
 
@@ -97,11 +100,18 @@ npm start
 
 ### Selecting and Moving Elements
 1. Click the **Select** tool (arrow icon)
-2. Click on any element to select it
-3. Selected elements show a blue bounding box with 8 resize handles
-4. **To Move**: Click and drag the element to a new position
-5. **To Resize**: Click and drag any of the 8 handles (corners or edges)
-6. Click on empty space to deselect
+2. **Single Selection**: Click on any element to select it
+3. **Multiple Selection**: Click and drag to draw a selection rectangle around multiple elements
+4. Selected elements show a blue bounding box with 8 resize handles
+5. **To Move**: Click and drag the selected element(s) to a new position
+6. **To Resize**: Click and drag any of the 8 handles (corners or edges)
+7. Click on empty space to deselect
+
+### Batch Operations with Rectangular Selection
+- Perfect for handwritten notes: draw a selection box around text/drawings
+- Select multiple strokes, shapes, and text together
+- Move and resize everything as a single unit
+- Great for organizing and rearranging your canvas content
 
 ### Navigation
 - **Pan**: Shift+Click and drag, middle mouse button, or select the Pan tool
@@ -165,25 +175,32 @@ For best performance with pen/tablet input, use Chrome or Edge.
 | Shift + Click & Drag | Pan the canvas |
 | Middle Mouse Button + Drag | Pan the canvas |
 | Mouse Wheel | Zoom in/out |
+| Click on element (Select mode) | Select single element |
+| Drag rectangle (Select mode) | Select multiple elements |
+| Drag selected element(s) | Move element(s) |
+| Drag resize handle | Resize selected element(s) |
 | Enter (in text mode) | Confirm text input |
 | Escape (in text mode) | Cancel text input |
-| Click + Drag (Select mode) | Move selected element |
 
 ## Recent Updates (v2.0)
 
 ### New Features
 - ✨ **Select Tool**: Click to select, drag to move, resize with handles
+- 📦 **Rectangular Selection**: Drag to select multiple elements at once (like GoodNotes/Notability)
+- 🎯 **Multi-Element Operations**: Move and resize multiple elements together
 - 🎨 **Improved Shape Drawing**: Circle and Rectangle now use corner-to-corner drawing (more intuitive)
 - 🌓 **Dark Mode**: Toggle between light and dark backgrounds
-- 🎯 **Text Rendering**: Text now properly renders on canvas and can be selected/moved
+- ✍️ **Fixed Text Tool**: Text now properly renders on canvas with bold font
 - 💅 **Enhanced UI**: Redesigned toolbar with better aesthetics, gradients, and visual feedback
 - 🎨 **Expanded Color Palette**: Added white color option
 - 📏 **More Pen Sizes**: Extended range up to 24px
 
 ### Bug Fixes
-- Fixed text tool not rendering text on canvas
-- Improved element selection hit detection
+- Fixed text tool rendering and input handling
+- Improved element selection hit detection with better padding
 - Better cursor feedback for different tools and resize handles
+- Text input now has placeholder and better visibility
+- Rectangular selection with visual feedback (blue semi-transparent overlay)
 
 ## Future Enhancements
 
