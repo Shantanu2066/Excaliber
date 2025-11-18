@@ -23,6 +23,8 @@ export default function Canvas({
   backgroundColor
 }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [elements, setElements] = useState<DrawingElement[]>([]);
@@ -32,11 +34,15 @@ export default function Canvas({
   const [textInput, setTextInput] = useState<{ element: DrawingElement; position: Point } | null>(null);
 
   // Selection state
-  const [selectedElement, setSelectedElement] = useState<DrawingElement | null>(null);
+  const [selectedElements, setSelectedElements] = useState<DrawingElement[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragStart, setDragStart] = useState<Point>({ x: 0, y: 0 });
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
+
+  // Rectangular selection
+  const [isRectSelecting, setIsRectSelecting] = useState(false);
+  const [selectionRect, setSelectionRect] = useState<{ start: Point; end: Point } | null>(null);
 
   // Transform screen coordinates to canvas coordinates
   const screenToCanvas = useCallback((screenX: number, screenY: number): Point => {
@@ -49,24 +55,31 @@ export default function Canvas({
   // Calculate bounds for an element
   const calculateBounds = useCallback((element: DrawingElement): Bounds => {
     if (element.type === 'text' && element.points.length > 0) {
-      const fontSize = element.fontSize || 16;
-      const textWidth = (element.text || '').length * fontSize * 0.6;
+      const fontSize = element.fontSize || 20;
+      const textWidth = Math.max((element.text || '').length * fontSize * 0.6, 20);
       return {
         x: element.points[0].x,
         y: element.points[0].y - fontSize,
         width: textWidth,
-        height: fontSize * 1.2,
+        height: fontSize * 1.4,
       };
     }
 
     if (element.type === 'freehand') {
+      if (element.points.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
       const xs = element.points.map(p => p.x);
       const ys = element.points.map(p => p.y);
       const minX = Math.min(...xs);
       const maxX = Math.max(...xs);
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
-      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+      const padding = element.size / 2;
+      return {
+        x: minX - padding,
+        y: minY - padding,
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + padding * 2
+      };
     }
 
     if (element.points.length < 2) {
@@ -78,10 +91,16 @@ export default function Canvas({
       const maxX = Math.max(element.points[0].x, element.points[1].x);
       const minY = Math.min(element.points[0].y, element.points[1].y);
       const maxY = Math.max(element.points[0].y, element.points[1].y);
-      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+      const padding = element.size / 2;
+      return {
+        x: minX - padding,
+        y: minY - padding,
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + padding * 2
+      };
     }
 
-    // For circle and rectangle (now both use corner-to-corner)
+    // For circle and rectangle
     const minX = Math.min(element.points[0].x, element.points[1].x);
     const maxX = Math.max(element.points[0].x, element.points[1].x);
     const minY = Math.min(element.points[0].y, element.points[1].y);
@@ -89,6 +108,19 @@ export default function Canvas({
 
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }, []);
+
+  // Calculate combined bounds for multiple elements
+  const calculateCombinedBounds = useCallback((elements: DrawingElement[]): Bounds => {
+    if (elements.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+
+    const bounds = elements.map(calculateBounds);
+    const minX = Math.min(...bounds.map(b => b.x));
+    const minY = Math.min(...bounds.map(b => b.y));
+    const maxX = Math.max(...bounds.map(b => b.x + b.width));
+    const maxY = Math.max(...bounds.map(b => b.y + b.height));
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }, [calculateBounds]);
 
   // Check if a point is inside element bounds
   const isPointInBounds = useCallback((point: Point, bounds: Bounds): boolean => {
@@ -98,9 +130,17 @@ export default function Canvas({
            point.y <= bounds.y + bounds.height;
   }, []);
 
+  // Check if two rectangles intersect
+  const doRectsIntersect = useCallback((rect1: Bounds, rect2: Bounds): boolean => {
+    return !(rect1.x + rect1.width < rect2.x ||
+             rect2.x + rect2.width < rect1.x ||
+             rect1.y + rect1.height < rect2.y ||
+             rect2.y + rect2.height < rect1.y);
+  }, []);
+
   // Get resize handle at point
   const getResizeHandleAtPoint = useCallback((point: Point, bounds: Bounds): ResizeHandle => {
-    const handleSize = 8 / zoom;
+    const handleSize = 10 / zoom;
     const { x, y, width, height } = bounds;
 
     // Check corners first
@@ -138,7 +178,7 @@ export default function Canvas({
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
 
-    // Draw grid (adjust color based on background)
+    // Draw grid
     ctx.strokeStyle = backgroundColor === '#1a1a1a' ? '#333' : '#e5e7eb';
     ctx.lineWidth = 1 / zoom;
     const gridSize = 50;
@@ -184,7 +224,6 @@ export default function Canvas({
         ctx.stroke();
       } else if (element.type === 'circle') {
         if (element.points.length < 2) return;
-        // Draw circle using bounding box
         const bounds = calculateBounds(element);
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
@@ -192,7 +231,7 @@ export default function Canvas({
         const radiusY = bounds.height / 2;
 
         ctx.beginPath();
-        ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+        ctx.ellipse(centerX, centerY, Math.abs(radiusX), Math.abs(radiusY), 0, 0, 2 * Math.PI);
         ctx.stroke();
       } else if (element.type === 'rectangle') {
         if (element.points.length < 2) return;
@@ -201,15 +240,33 @@ export default function Canvas({
         ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         ctx.stroke();
       } else if (element.type === 'text' && element.text) {
-        const fontSize = element.fontSize || 16;
-        ctx.font = `${fontSize}px Arial, sans-serif`;
+        const fontSize = element.fontSize || 20;
+        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+        ctx.fillStyle = element.color;
         ctx.fillText(element.text, element.points[0].x, element.points[0].y);
       }
     });
 
-    // Draw selection handles
-    if (selectedElement && selectedTool === 'select') {
-      const bounds = calculateBounds(selectedElement);
+    // Draw selection rectangle (during rectangular selection)
+    if (isRectSelecting && selectionRect) {
+      const minX = Math.min(selectionRect.start.x, selectionRect.end.x);
+      const minY = Math.min(selectionRect.start.y, selectionRect.end.y);
+      const width = Math.abs(selectionRect.end.x - selectionRect.start.x);
+      const height = Math.abs(selectionRect.end.y - selectionRect.start.y);
+
+      ctx.strokeStyle = '#3b82f6';
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+      ctx.lineWidth = 2 / zoom;
+      ctx.setLineDash([5 / zoom, 5 / zoom]);
+
+      ctx.fillRect(minX, minY, width, height);
+      ctx.strokeRect(minX, minY, width, height);
+      ctx.setLineDash([]);
+    }
+
+    // Draw selection handles for selected elements
+    if (selectedElements.length > 0 && selectedTool === 'select' && !isRectSelecting) {
+      const bounds = calculateCombinedBounds(selectedElements);
 
       // Draw bounding box
       ctx.strokeStyle = '#3b82f6';
@@ -219,8 +276,11 @@ export default function Canvas({
       ctx.setLineDash([]);
 
       // Draw resize handles
-      const handleSize = 6 / zoom;
-      ctx.fillStyle = '#3b82f6';
+      const handleSize = 8 / zoom;
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2 / zoom;
+
       const handles = [
         { x: bounds.x, y: bounds.y }, // nw
         { x: bounds.x + bounds.width, y: bounds.y }, // ne
@@ -239,11 +299,17 @@ export default function Canvas({
           handleSize,
           handleSize
         );
+        ctx.strokeRect(
+          handle.x - handleSize / 2,
+          handle.y - handleSize / 2,
+          handleSize,
+          handleSize
+        );
       });
     }
 
     ctx.restore();
-  }, [elements, currentElement, pan, zoom, selectedElement, selectedTool, backgroundColor, calculateBounds]);
+  }, [elements, currentElement, pan, zoom, selectedElements, selectedTool, backgroundColor, calculateBounds, calculateCombinedBounds, isRectSelecting, selectionRect]);
 
   // Resize canvas to window size
   useEffect(() => {
@@ -285,9 +351,9 @@ export default function Canvas({
 
     // Select mode
     if (selectedTool === 'select') {
-      // Check if clicking on selected element's resize handle
-      if (selectedElement) {
-        const bounds = calculateBounds(selectedElement);
+      // Check if clicking on resize handle
+      if (selectedElements.length > 0) {
+        const bounds = calculateCombinedBounds(selectedElements);
         const handle = getResizeHandleAtPoint(canvasPoint, bounds);
 
         if (handle) {
@@ -297,7 +363,7 @@ export default function Canvas({
           return;
         }
 
-        // Check if clicking inside selected element to drag
+        // Check if clicking inside selected elements to drag
         if (isPointInBounds(canvasPoint, bounds)) {
           setIsDragging(true);
           setDragStart(canvasPoint);
@@ -305,19 +371,27 @@ export default function Canvas({
         }
       }
 
-      // Check if clicking on any element to select it
+      // Check if clicking on a single element
+      let clickedElement: DrawingElement | null = null;
       for (let i = elements.length - 1; i >= 0; i--) {
         const element = elements[i];
         const bounds = calculateBounds(element);
         if (isPointInBounds(canvasPoint, bounds)) {
-          setSelectedElement(element);
-          setDragStart(canvasPoint);
-          return;
+          clickedElement = element;
+          break;
         }
       }
 
-      // Clicked on empty space, deselect
-      setSelectedElement(null);
+      if (clickedElement) {
+        setSelectedElements([clickedElement]);
+        setDragStart(canvasPoint);
+        return;
+      }
+
+      // Start rectangular selection
+      setIsRectSelecting(true);
+      setSelectionRect({ start: canvasPoint, end: canvasPoint });
+      setSelectedElements([]);
       return;
     }
 
@@ -331,16 +405,22 @@ export default function Canvas({
           color,
           size: penSize,
           text: '',
-          fontSize: 20,
+          fontSize: 24,
         },
         position: { x: screenX, y: screenY }
       });
+      // Focus the input after a brief delay
+      setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus();
+        }
+      }, 50);
       return;
     }
 
     // Drawing mode
     setIsDrawing(true);
-    setSelectedElement(null);
+    setSelectedElements([]);
 
     const newElement: DrawingElement = {
       id: Date.now().toString(),
@@ -371,68 +451,91 @@ export default function Canvas({
       return;
     }
 
-    // Dragging selected element
-    if (isDragging && selectedElement) {
+    // Rectangular selection
+    if (isRectSelecting && selectionRect) {
+      setSelectionRect({ ...selectionRect, end: canvasPoint });
+      return;
+    }
+
+    // Dragging selected elements
+    if (isDragging && selectedElements.length > 0) {
       const dx = canvasPoint.x - dragStart.x;
       const dy = canvasPoint.y - dragStart.y;
 
-      const updatedElement = {
-        ...selectedElement,
-        points: selectedElement.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
-      };
+      const updatedElements = elements.map(el => {
+        const isSelected = selectedElements.some(sel => sel.id === el.id);
+        if (isSelected) {
+          return {
+            ...el,
+            points: el.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
+          };
+        }
+        return el;
+      });
 
-      setElements(elements.map(el => el.id === selectedElement.id ? updatedElement : el));
-      setSelectedElement(updatedElement);
+      setElements(updatedElements);
+      setSelectedElements(selectedElements.map(sel => ({
+        ...sel,
+        points: sel.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
+      })));
       setDragStart(canvasPoint);
       return;
     }
 
-    // Resizing selected element
-    if (isResizing && selectedElement && resizeHandle) {
-      const bounds = calculateBounds(selectedElement);
-      let newBounds = { ...bounds };
+    // Resizing selected elements
+    if (isResizing && selectedElements.length > 0 && resizeHandle) {
+      const oldBounds = calculateCombinedBounds(selectedElements);
+      let newBounds = { ...oldBounds };
 
       // Update bounds based on resize handle
-      if (resizeHandle.includes('n')) newBounds.y = canvasPoint.y;
-      if (resizeHandle.includes('s')) newBounds.height = canvasPoint.y - bounds.y;
-      if (resizeHandle.includes('w')) newBounds.x = canvasPoint.x;
-      if (resizeHandle.includes('e')) newBounds.width = canvasPoint.x - bounds.x;
-
-      // Adjust width/height if we moved top-left corner
-      if (resizeHandle.includes('n')) newBounds.height = bounds.y + bounds.height - newBounds.y;
-      if (resizeHandle.includes('w')) newBounds.width = bounds.x + bounds.width - newBounds.x;
-
-      // Update element based on type
-      let updatedElement = { ...selectedElement };
-
-      if (selectedElement.type === 'rectangle' || selectedElement.type === 'circle') {
-        updatedElement.points = [
-          { x: newBounds.x, y: newBounds.y },
-          { x: newBounds.x + newBounds.width, y: newBounds.y + newBounds.height }
-        ];
-      } else if (selectedElement.type === 'line') {
-        if (resizeHandle === 'nw' || resizeHandle === 'w' || resizeHandle === 'sw') {
-          updatedElement.points[0] = { x: newBounds.x, y: updatedElement.points[0].y };
-        }
-        if (resizeHandle === 'ne' || resizeHandle === 'e' || resizeHandle === 'se') {
-          updatedElement.points[1] = { x: newBounds.x + newBounds.width, y: updatedElement.points[1].y };
-        }
-        if (resizeHandle === 'nw' || resizeHandle === 'n' || resizeHandle === 'ne') {
-          updatedElement.points[0] = { x: updatedElement.points[0].x, y: newBounds.y };
-        }
-        if (resizeHandle === 'sw' || resizeHandle === 's' || resizeHandle === 'se') {
-          updatedElement.points[1] = { x: updatedElement.points[1].x, y: newBounds.y + newBounds.height };
-        }
+      if (resizeHandle.includes('n')) {
+        newBounds.height = oldBounds.y + oldBounds.height - canvasPoint.y;
+        newBounds.y = canvasPoint.y;
+      }
+      if (resizeHandle.includes('s')) {
+        newBounds.height = canvasPoint.y - oldBounds.y;
+      }
+      if (resizeHandle.includes('w')) {
+        newBounds.width = oldBounds.x + oldBounds.width - canvasPoint.x;
+        newBounds.x = canvasPoint.x;
+      }
+      if (resizeHandle.includes('e')) {
+        newBounds.width = canvasPoint.x - oldBounds.x;
       }
 
-      setElements(elements.map(el => el.id === selectedElement.id ? updatedElement : el));
-      setSelectedElement(updatedElement);
+      // Calculate scale factors
+      const scaleX = newBounds.width / oldBounds.width;
+      const scaleY = newBounds.height / oldBounds.height;
+
+      // Apply scaling to all selected elements
+      const updatedElements = elements.map(el => {
+        const isSelected = selectedElements.some(sel => sel.id === el.id);
+        if (isSelected) {
+          return {
+            ...el,
+            points: el.points.map(p => ({
+              x: newBounds.x + (p.x - oldBounds.x) * scaleX,
+              y: newBounds.y + (p.y - oldBounds.y) * scaleY,
+            })),
+          };
+        }
+        return el;
+      });
+
+      setElements(updatedElements);
+      setSelectedElements(selectedElements.map(sel => ({
+        ...sel,
+        points: sel.points.map(p => ({
+          x: newBounds.x + (p.x - oldBounds.x) * scaleX,
+          y: newBounds.y + (p.y - oldBounds.y) * scaleY,
+        })),
+      })));
       return;
     }
 
     // Update cursor for select mode
-    if (selectedTool === 'select' && selectedElement) {
-      const bounds = calculateBounds(selectedElement);
+    if (selectedTool === 'select' && selectedElements.length > 0 && !isRectSelecting) {
+      const bounds = calculateCombinedBounds(selectedElements);
       const handle = getResizeHandleAtPoint(canvasPoint, bounds);
 
       if (handle) {
@@ -445,6 +548,8 @@ export default function Canvas({
       } else if (isPointInBounds(canvasPoint, bounds)) {
         canvas.style.cursor = 'move';
         return;
+      } else {
+        canvas.style.cursor = 'crosshair';
       }
     }
 
@@ -471,6 +576,26 @@ export default function Canvas({
     if (isPanning) {
       setIsPanning(false);
       canvas.style.cursor = selectedTool === 'pan' ? 'grab' : 'default';
+      return;
+    }
+
+    // Finish rectangular selection
+    if (isRectSelecting && selectionRect) {
+      const minX = Math.min(selectionRect.start.x, selectionRect.end.x);
+      const minY = Math.min(selectionRect.start.y, selectionRect.end.y);
+      const maxX = Math.max(selectionRect.start.x, selectionRect.end.x);
+      const maxY = Math.max(selectionRect.start.y, selectionRect.end.y);
+      const rectBounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+
+      // Find all elements that intersect with selection rectangle
+      const selected = elements.filter(el => {
+        const bounds = calculateBounds(el);
+        return doRectsIntersect(bounds, rectBounds);
+      });
+
+      setSelectedElements(selected);
+      setIsRectSelecting(false);
+      setSelectionRect(null);
       return;
     }
 
@@ -528,7 +653,8 @@ export default function Canvas({
     if (!textInput) return;
 
     if (text.trim()) {
-      setElements([...elements, { ...textInput.element, text }]);
+      const newElement = { ...textInput.element, text: text.trim() };
+      setElements([...elements, newElement]);
     }
     setTextInput(null);
   };
@@ -547,19 +673,23 @@ export default function Canvas({
       />
       {textInput && (
         <input
+          ref={textInputRef}
           key={textInput.element.id}
           type="text"
           autoFocus
-          className="fixed z-50 border-2 border-blue-500 outline-none px-3 py-2 rounded bg-white"
+          placeholder="Type text here..."
+          className="fixed z-50 border-2 border-blue-500 outline-none px-4 py-2 rounded-lg bg-white shadow-lg font-bold"
           style={{
             left: `${textInput.position.x}px`,
             top: `${textInput.position.y}px`,
-            fontSize: `${(textInput.element.fontSize || 20)}px`,
+            fontSize: `${(textInput.element.fontSize || 24)}px`,
             color: textInput.element.color,
+            minWidth: '200px',
           }}
           onBlur={(e) => handleTextSubmit(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
+              e.preventDefault();
               handleTextSubmit(e.currentTarget.value);
             } else if (e.key === 'Escape') {
               setTextInput(null);
