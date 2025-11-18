@@ -12,6 +12,13 @@ export default function Home() {
   const [zoom, setZoom] = useState(1.0);
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
 
+  const handleSnapshot = () => {
+    // Call the snapshot function exposed by Canvas component
+    if ((window as any).__canvasSnapshot) {
+      (window as any).__canvasSnapshot();
+    }
+  };
+
   return (
     <div className="w-screen h-screen overflow-hidden">
       <Toolbar
@@ -24,6 +31,7 @@ export default function Home() {
         zoom={zoom}
         backgroundColor={backgroundColor}
         onBackgroundColorChange={setBackgroundColor}
+        onSnapshot={handleSnapshot}
       />
       <div className="pt-20">
         <Canvas
@@ -33,6 +41,7 @@ export default function Home() {
           zoom={zoom}
           onZoomChange={setZoom}
           backgroundColor={backgroundColor}
+          onSnapshotRequest={handleSnapshot}
         />
       </div>
     </div>
