@@ -30,10 +30,14 @@ export default function Canvas({
   const [isDrawing, setIsDrawing] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [elements, setElements] = useState<DrawingElement[]>([]);
+  const [history, setHistory] = useState<DrawingElement[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const [currentElement, setCurrentElement] = useState<DrawingElement | null>(null);
   const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
   const [lastPanPoint, setLastPanPoint] = useState<Point>({ x: 0, y: 0 });
-  const [textInput, setTextInput] = useState<{ element: DrawingElement; position: Point } | null>(null);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [textPosition, setTextPosition] = useState<Point>({ x: 0, y: 0 });
+  const [textValue, setTextValue] = useState('');
 
   // Selection state
   const [selectedElements, setSelectedElements] = useState<DrawingElement[]>([]);
@@ -45,6 +49,39 @@ export default function Canvas({
   // Rectangular selection
   const [isRectSelecting, setIsRectSelecting] = useState(false);
   const [selectionRect, setSelectionRect] = useState<{ start: Point; end: Point } | null>(null);
+
+  // Add to history
+  const addToHistory = useCallback((newElements: DrawingElement[]) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push([...newElements]);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    setElements(newElements);
+  }, [history, historyIndex]);
+
+  // Undo/Redo handlers
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        // Undo
+        if (historyIndex > 0) {
+          setHistoryIndex(historyIndex - 1);
+          setElements(history[historyIndex - 1]);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        // Redo
+        if (historyIndex < history.length - 1) {
+          setHistoryIndex(historyIndex + 1);
+          setElements(history[historyIndex + 1]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [history, historyIndex]);
 
   // Transform screen coordinates to canvas coordinates
   const screenToCanvas = useCallback((screenX: number, screenY: number): Point => {
@@ -320,11 +357,9 @@ export default function Canvas({
     if (!canvas) return;
 
     try {
-      // Convert canvas to blob
       canvas.toBlob((blob) => {
         if (!blob) return;
 
-        // Create download link
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
@@ -333,7 +368,6 @@ export default function Canvas({
         link.href = url;
         link.click();
 
-        // Cleanup
         setTimeout(() => URL.revokeObjectURL(url), 100);
       }, 'image/png');
     } catch (error) {
@@ -341,19 +375,8 @@ export default function Canvas({
     }
   }, []);
 
-  // Listen for snapshot requests
-  useEffect(() => {
-    const handleSnapshot = () => {
-      takeSnapshot();
-    };
-
-    // We'll trigger this via the callback prop
-    return () => {};
-  }, [takeSnapshot]);
-
   // Expose snapshot function via callback
   useEffect(() => {
-    // Store the snapshot function so parent can call it
     (window as any).__canvasSnapshot = takeSnapshot;
   }, [takeSnapshot]);
 
@@ -397,7 +420,6 @@ export default function Canvas({
 
     // Select mode
     if (selectedTool === 'select') {
-      // Check if clicking on resize handle
       if (selectedElements.length > 0) {
         const bounds = calculateCombinedBounds(selectedElements);
         const handle = getResizeHandleAtPoint(canvasPoint, bounds);
@@ -409,7 +431,6 @@ export default function Canvas({
           return;
         }
 
-        // Check if clicking inside selected elements to drag
         if (isPointInBounds(canvasPoint, bounds)) {
           setIsDragging(true);
           setDragStart(canvasPoint);
@@ -417,7 +438,6 @@ export default function Canvas({
         }
       }
 
-      // Check if clicking on a single element
       let clickedElement: DrawingElement | null = null;
       for (let i = elements.length - 1; i >= 0; i--) {
         const element = elements[i];
@@ -434,7 +454,6 @@ export default function Canvas({
         return;
       }
 
-      // Start rectangular selection
       setIsRectSelecting(true);
       setSelectionRect({ start: canvasPoint, end: canvasPoint });
       setSelectedElements([]);
@@ -443,24 +462,10 @@ export default function Canvas({
 
     // Text mode
     if (selectedTool === 'text') {
-      setTextInput({
-        element: {
-          id: Date.now().toString(),
-          type: 'text',
-          points: [canvasPoint],
-          color,
-          size: penSize,
-          text: '',
-          fontSize: 24,
-        },
-        position: { x: screenX, y: screenY }
-      });
-      // Focus the input after a brief delay
-      setTimeout(() => {
-        if (textInputRef.current) {
-          textInputRef.current.focus();
-        }
-      }, 50);
+      setIsEditingText(true);
+      setTextPosition({ x: screenX, y: screenY });
+      setTextValue('');
+      setTimeout(() => textInputRef.current?.focus(), 100);
       return;
     }
 
@@ -488,7 +493,6 @@ export default function Canvas({
     const screenY = e.clientY - rect.top;
     const canvasPoint = screenToCanvas(screenX, screenY);
 
-    // Panning
     if (isPanning) {
       const dx = screenX - lastPanPoint.x;
       const dy = screenY - lastPanPoint.y;
@@ -497,13 +501,11 @@ export default function Canvas({
       return;
     }
 
-    // Rectangular selection
     if (isRectSelecting && selectionRect) {
       setSelectionRect({ ...selectionRect, end: canvasPoint });
       return;
     }
 
-    // Dragging selected elements
     if (isDragging && selectedElements.length > 0) {
       const dx = canvasPoint.x - dragStart.x;
       const dy = canvasPoint.y - dragStart.y;
@@ -528,12 +530,10 @@ export default function Canvas({
       return;
     }
 
-    // Resizing selected elements
     if (isResizing && selectedElements.length > 0 && resizeHandle) {
       const oldBounds = calculateCombinedBounds(selectedElements);
       let newBounds = { ...oldBounds };
 
-      // Update bounds based on resize handle
       if (resizeHandle.includes('n')) {
         newBounds.height = oldBounds.y + oldBounds.height - canvasPoint.y;
         newBounds.y = canvasPoint.y;
@@ -549,11 +549,9 @@ export default function Canvas({
         newBounds.width = canvasPoint.x - oldBounds.x;
       }
 
-      // Calculate scale factors
       const scaleX = newBounds.width / oldBounds.width;
       const scaleY = newBounds.height / oldBounds.height;
 
-      // Apply scaling to all selected elements
       const updatedElements = elements.map(el => {
         const isSelected = selectedElements.some(sel => sel.id === el.id);
         if (isSelected) {
@@ -579,7 +577,6 @@ export default function Canvas({
       return;
     }
 
-    // Update cursor for select mode
     if (selectedTool === 'select' && selectedElements.length > 0 && !isRectSelecting) {
       const bounds = calculateCombinedBounds(selectedElements);
       const handle = getResizeHandleAtPoint(canvasPoint, bounds);
@@ -599,7 +596,6 @@ export default function Canvas({
       }
     }
 
-    // Drawing
     if (!isDrawing || !currentElement) return;
 
     if (currentElement.type === 'freehand') {
@@ -625,7 +621,6 @@ export default function Canvas({
       return;
     }
 
-    // Finish rectangular selection
     if (isRectSelecting && selectionRect) {
       const minX = Math.min(selectionRect.start.x, selectionRect.end.x);
       const minY = Math.min(selectionRect.start.y, selectionRect.end.y);
@@ -633,7 +628,6 @@ export default function Canvas({
       const maxY = Math.max(selectionRect.start.y, selectionRect.end.y);
       const rectBounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 
-      // Find all elements that intersect with selection rectangle
       const selected = elements.filter(el => {
         const bounds = calculateBounds(el);
         return doRectsIntersect(bounds, rectBounds);
@@ -647,17 +641,20 @@ export default function Canvas({
 
     if (isDragging) {
       setIsDragging(false);
+      addToHistory(elements);
       return;
     }
 
     if (isResizing) {
       setIsResizing(false);
       setResizeHandle(null);
+      addToHistory(elements);
       return;
     }
 
     if (isDrawing && currentElement) {
-      setElements([...elements, currentElement]);
+      const newElements = [...elements, currentElement];
+      addToHistory(newElements);
       setCurrentElement(null);
     }
     setIsDrawing(false);
@@ -683,7 +680,6 @@ export default function Canvas({
     onZoomChange(newZoom);
   };
 
-  // Update cursor
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -695,14 +691,28 @@ export default function Canvas({
       'crosshair';
   }, [selectedTool]);
 
-  const handleTextSubmit = (text: string) => {
-    if (!textInput) return;
-
-    if (text.trim()) {
-      const newElement = { ...textInput.element, text: text.trim() };
-      setElements([...elements, newElement]);
+  const handleTextSubmit = () => {
+    if (!isEditingText || !textValue.trim()) {
+      setIsEditingText(false);
+      setTextValue('');
+      return;
     }
-    setTextInput(null);
+
+    const canvasPoint = screenToCanvas(textPosition.x, textPosition.y);
+    const newElement: DrawingElement = {
+      id: Date.now().toString(),
+      type: 'text',
+      points: [canvasPoint],
+      color,
+      size: penSize,
+      text: textValue.trim(),
+      fontSize: 24,
+    };
+
+    const newElements = [...elements, newElement];
+    addToHistory(newElements);
+    setIsEditingText(false);
+    setTextValue('');
   };
 
   return (
@@ -717,31 +727,37 @@ export default function Canvas({
         className="touch-none"
         style={{ display: 'block' }}
       />
-      {textInput && (
-        <input
-          ref={textInputRef}
-          key={textInput.element.id}
-          type="text"
-          autoFocus
-          placeholder="Type text here..."
-          className="fixed z-50 border-2 border-blue-500 outline-none px-4 py-2 rounded-lg bg-white shadow-lg font-bold"
+      {isEditingText && (
+        <div
+          className="fixed z-50"
           style={{
-            left: `${textInput.position.x}px`,
-            top: `${textInput.position.y}px`,
-            fontSize: `${(textInput.element.fontSize || 24)}px`,
-            color: textInput.element.color,
-            minWidth: '200px',
+            left: `${textPosition.x}px`,
+            top: `${textPosition.y}px`,
           }}
-          onBlur={(e) => handleTextSubmit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleTextSubmit(e.currentTarget.value);
-            } else if (e.key === 'Escape') {
-              setTextInput(null);
-            }
-          }}
-        />
+        >
+          <input
+            ref={textInputRef}
+            type="text"
+            value={textValue}
+            onChange={(e) => setTextValue(e.target.value)}
+            placeholder="Type text here..."
+            className="border-2 border-blue-500 outline-none px-4 py-2 rounded-lg bg-white shadow-lg font-bold text-2xl"
+            style={{
+              color: color,
+              minWidth: '250px',
+            }}
+            onBlur={handleTextSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleTextSubmit();
+              } else if (e.key === 'Escape') {
+                setIsEditingText(false);
+                setTextValue('');
+              }
+            }}
+          />
+        </div>
       )}
     </>
   );
