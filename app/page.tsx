@@ -6,10 +6,11 @@ import Toolbar from '@/components/Toolbar';
 import { Tool } from '@/types/canvas';
 
 export default function Home() {
-  const [selectedTool, setSelectedTool] = useState<Tool>('pen');
+  const [selectedTool, setSelectedTool] = useState<Tool>('select');
   const [penSize, setPenSize] = useState(4);
   const [color, setColor] = useState('#000000');
   const [zoom, setZoom] = useState(1.0);
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff');
 
   return (
     <div className="w-screen h-screen overflow-hidden">
@@ -21,14 +22,17 @@ export default function Home() {
         color={color}
         onColorChange={setColor}
         zoom={zoom}
+        backgroundColor={backgroundColor}
+        onBackgroundColorChange={setBackgroundColor}
       />
-      <div className="pt-16">
+      <div className="pt-20">
         <Canvas
           selectedTool={selectedTool}
           penSize={penSize}
           color={color}
           zoom={zoom}
           onZoomChange={setZoom}
+          backgroundColor={backgroundColor}
         />
       </div>
     </div>
