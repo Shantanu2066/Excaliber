@@ -1,8 +1,15 @@
-export type Tool = 'pen' | 'line' | 'circle' | 'rectangle' | 'text' | 'pan';
+export type Tool = 'select' | 'pen' | 'line' | 'circle' | 'rectangle' | 'text' | 'pan';
 
 export interface Point {
   x: number;
   y: number;
+}
+
+export interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface DrawingElement {
@@ -13,8 +20,7 @@ export interface DrawingElement {
   size: number;
   text?: string;
   fontSize?: number;
-  width?: number;
-  height?: number;
+  bounds?: Bounds; // Cached bounds for hit detection
 }
 
 export interface CanvasState {

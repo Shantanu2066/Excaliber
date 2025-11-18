@@ -11,9 +11,12 @@ interface ToolbarProps {
   color: string;
   onColorChange: (color: string) => void;
   zoom: number;
+  backgroundColor: string;
+  onBackgroundColorChange: (color: string) => void;
 }
 
 const tools: { id: Tool; label: string; icon: string }[] = [
+  { id: 'select', label: 'Select', icon: '⬆️' },
   { id: 'pen', label: 'Pen', icon: '✏️' },
   { id: 'line', label: 'Line', icon: '📏' },
   { id: 'circle', label: 'Circle', icon: '⭕' },
@@ -22,7 +25,7 @@ const tools: { id: Tool; label: string; icon: string }[] = [
   { id: 'pan', label: 'Pan', icon: '✋' },
 ];
 
-const penSizes = [2, 4, 6, 8, 12, 16];
+const penSizes = [2, 4, 6, 8, 12, 16, 20, 24];
 
 const colors = [
   '#000000', // Black
@@ -35,6 +38,7 @@ const colors = [
   '#FFA500', // Orange
   '#800080', // Purple
   '#808080', // Gray
+  '#FFFFFF', // White
 ];
 
 export default function Toolbar({
@@ -45,83 +49,120 @@ export default function Toolbar({
   color,
   onColorChange,
   zoom,
+  backgroundColor,
+  onBackgroundColorChange,
 }: ToolbarProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 bg-white shadow-md border-b border-gray-300 z-40">
-      <div className="flex items-center gap-6 px-4 py-3">
-        {/* Tools */}
-        <div className="flex items-center gap-2">
-          {tools.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => onToolChange(tool.id)}
-              className={`px-3 py-2 rounded-lg font-medium transition-all ${
-                selectedTool === tool.id
-                  ? 'bg-blue-500 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title={tool.label}
-            >
-              <span className="mr-1">{tool.icon}</span>
-              {tool.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300" />
-
-        {/* Pen Size */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Size:</label>
-          <select
-            value={penSize}
-            onChange={(e) => onPenSizeChange(Number(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {penSizes.map((size) => (
-              <option key={size} value={size}>
-                {size}px
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300" />
-
-        {/* Color Picker */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Color:</label>
-          <div className="flex gap-1">
-            {colors.map((c) => (
+    <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-slate-50 to-slate-100 shadow-lg border-b-2 border-slate-200 z-40">
+      <div className="flex items-center justify-between gap-6 px-6 py-4">
+        {/* Left side - Tools */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white rounded-xl shadow-md p-2">
+            {tools.map((tool) => (
               <button
-                key={c}
-                onClick={() => onColorChange(c)}
-                className={`w-8 h-8 rounded-full border-2 transition-all ${
-                  color === c ? 'border-blue-500 scale-110' : 'border-gray-300'
+                key={tool.id}
+                onClick={() => onToolChange(tool.id)}
+                className={`group relative px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                  selectedTool === tool.id
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-105'
+                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:scale-102'
                 }`}
-                style={{ backgroundColor: c }}
-                title={c}
-              />
+                title={tool.label}
+              >
+                <span className="text-lg mr-1.5">{tool.icon}</span>
+                <span className="text-xs font-bold tracking-wide">{tool.label}</span>
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300" />
+        {/* Center - Controls */}
+        <div className="flex items-center gap-6">
+          {/* Pen Size */}
+          <div className="flex items-center gap-3 bg-white rounded-xl shadow-md px-4 py-2.5">
+            <label className="text-sm font-bold text-slate-700 tracking-wide">SIZE</label>
+            <select
+              value={penSize}
+              onChange={(e) => onPenSizeChange(Number(e.target.value))}
+              className="px-3 py-1.5 border-2 border-slate-200 rounded-lg font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-50 cursor-pointer hover:border-blue-300 transition-colors"
+            >
+              {penSizes.map((size) => (
+                <option key={size} value={size}>
+                  {size}px
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Zoom Display */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Zoom:</label>
-          <span className="px-3 py-2 bg-gray-100 rounded-lg font-mono text-sm">
-            {Math.round(zoom * 100)}%
-          </span>
+          {/* Color Picker */}
+          <div className="flex items-center gap-3 bg-white rounded-xl shadow-md px-4 py-2.5">
+            <label className="text-sm font-bold text-slate-700 tracking-wide">COLOR</label>
+            <div className="flex gap-1.5">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => onColorChange(c)}
+                  className={`w-9 h-9 rounded-lg border-3 transition-all duration-200 hover:scale-110 ${
+                    color === c
+                      ? 'border-blue-500 ring-2 ring-blue-300 scale-110 shadow-lg'
+                      : 'border-slate-300 hover:border-slate-400'
+                  }`}
+                  style={{
+                    backgroundColor: c,
+                    boxShadow: c === '#FFFFFF' ? 'inset 0 0 0 1px #e2e8f0' : undefined
+                  }}
+                  title={c}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Background Toggle */}
+          <div className="flex items-center gap-3 bg-white rounded-xl shadow-md px-4 py-2.5">
+            <label className="text-sm font-bold text-slate-700 tracking-wide">BG</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onBackgroundColorChange('#ffffff')}
+                className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
+                  backgroundColor === '#ffffff'
+                    ? 'bg-slate-100 text-slate-900 ring-2 ring-slate-300'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                ☀️ Light
+              </button>
+              <button
+                onClick={() => onBackgroundColorChange('#1a1a1a')}
+                className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
+                  backgroundColor === '#1a1a1a'
+                    ? 'bg-slate-800 text-white ring-2 ring-slate-600'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                🌙 Dark
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Instructions */}
-        <div className="ml-auto text-sm text-gray-500">
-          <span className="font-medium">Tips:</span> Shift+Click or Middle-Click to pan | Scroll to zoom
+        {/* Right side - Info */}
+        <div className="flex items-center gap-4">
+          {/* Zoom Display */}
+          <div className="flex items-center gap-2 bg-white rounded-xl shadow-md px-4 py-2.5">
+            <label className="text-sm font-bold text-slate-700 tracking-wide">ZOOM</label>
+            <span className="px-3 py-1 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg font-mono text-sm font-bold text-blue-700">
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+
+          {/* Quick Tips */}
+          <div className="hidden xl:flex items-center gap-2 text-xs text-slate-600 bg-white rounded-xl shadow-md px-4 py-2.5">
+            <span className="font-bold text-slate-700">💡</span>
+            <span className="font-medium">
+              <kbd className="px-2 py-0.5 bg-slate-100 rounded font-mono text-xs">Shift+Click</kbd> or{' '}
+              <kbd className="px-2 py-0.5 bg-slate-100 rounded font-mono text-xs">Scroll</kbd> to navigate
+            </span>
+          </div>
         </div>
       </div>
     </div>

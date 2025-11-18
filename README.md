@@ -11,25 +11,36 @@ A high-performance web-based canvas application built with Next.js, featuring fr
 - Optimized rendering with `desynchronized` context for minimal latency
 
 ### 🎨 Drawing Tools
+- **Select Tool**: Click to select elements, drag to move them, or resize using corner/edge handles
 - **Pen Tool**: Freehand sketching with customizable size and color
-- **Line Tool**: Draw straight lines between two points
-- **Circle Tool**: Create circles by clicking center and dragging to set radius
-- **Rectangle Tool**: Draw rectangles by defining opposite corners
-- **Text Tool**: Add text annotations with customizable color
+- **Line Tool**: Draw straight lines by dragging from start to end point
+- **Circle Tool**: Create circles/ellipses by dragging from corner to corner (like most paint apps)
+- **Rectangle Tool**: Draw rectangles by dragging from one corner to the opposite corner
+- **Text Tool**: Click to add text with real-time input, customizable color and size
+- **Pan Tool**: Move around the infinite canvas
+
+### ✨ Element Manipulation
+- **Select and Move**: Click any element with the Select tool to select it, then drag to reposition
+- **Resize**: Select an element to reveal 8 resize handles (corners and edges)
+- **Visual Feedback**: Selected elements show blue bounding boxes with interactive handles
+- Works with all element types: freehand drawings, shapes, lines, and text
 
 ### 🎯 Infinite Canvas
 - Unlimited drawing space similar to Excalidraw
-- **Pan**: Click and drag with Shift+Click, middle mouse button, or using the Pan tool
+- **Pan**: Shift+Click and drag, middle mouse button, or use the Pan tool
 - **Zoom**: Scroll to zoom in/out (10% - 500% zoom range)
 - Default zoom set at 100%
-- Grid background for spatial reference
+- Dynamic grid background that adapts to zoom level
 
 ### 🎨 Customization Options
-- **Pen Sizes**: Choose from 2px, 4px, 6px, 8px, 12px, or 16px
-- **Color Palette**: 10 predefined colors including:
-  - Black, Red, Green, Blue
+- **Pen Sizes**: Choose from 2px, 4px, 6px, 8px, 12px, 16px, 20px, or 24px
+- **Color Palette**: 11 predefined colors including:
+  - Black, White, Red, Green, Blue
   - Yellow, Magenta, Cyan
   - Orange, Purple, Gray
+- **Background Themes**:
+  - ☀️ Light Mode (white background)
+  - 🌙 Dark Mode (dark background) - perfect for night work or presentations
 
 ## Getting Started
 
@@ -74,20 +85,28 @@ npm start
 
 ### Drawing Shapes
 1. Select a shape tool (**Line**, **Circle**, or **Rectangle**)
-2. Click to set the starting point
-3. Drag to define the shape
-4. Release to complete
+2. Click and drag from one corner to the opposite corner
+3. Release to complete the shape
+4. **Note**: Circle and Rectangle now use corner-to-corner drawing (like Paint/Photoshop)
 
 ### Adding Text
 1. Select the **Text** tool
 2. Click anywhere on the canvas
-3. Type your text
+3. Type your text in the input box that appears
 4. Press **Enter** to confirm or **Escape** to cancel
 
+### Selecting and Moving Elements
+1. Click the **Select** tool (arrow icon)
+2. Click on any element to select it
+3. Selected elements show a blue bounding box with 8 resize handles
+4. **To Move**: Click and drag the element to a new position
+5. **To Resize**: Click and drag any of the 8 handles (corners or edges)
+6. Click on empty space to deselect
+
 ### Navigation
-- **Pan**: Shift+Click and drag, or use middle mouse button, or select Pan tool
-- **Zoom**: Use mouse wheel to zoom in/out
-- Current zoom level is displayed in the toolbar
+- **Pan**: Shift+Click and drag, middle mouse button, or select the Pan tool
+- **Zoom**: Use mouse wheel to zoom in/out (zoom level shown in toolbar)
+- **Background**: Toggle between Light and Dark modes using the BG buttons
 
 ## Technical Details
 
@@ -144,22 +163,42 @@ For best performance with pen/tablet input, use Chrome or Edge.
 | Shortcut | Action |
 |----------|--------|
 | Shift + Click & Drag | Pan the canvas |
+| Middle Mouse Button + Drag | Pan the canvas |
 | Mouse Wheel | Zoom in/out |
 | Enter (in text mode) | Confirm text input |
 | Escape (in text mode) | Cancel text input |
+| Click + Drag (Select mode) | Move selected element |
+
+## Recent Updates (v2.0)
+
+### New Features
+- ✨ **Select Tool**: Click to select, drag to move, resize with handles
+- 🎨 **Improved Shape Drawing**: Circle and Rectangle now use corner-to-corner drawing (more intuitive)
+- 🌓 **Dark Mode**: Toggle between light and dark backgrounds
+- 🎯 **Text Rendering**: Text now properly renders on canvas and can be selected/moved
+- 💅 **Enhanced UI**: Redesigned toolbar with better aesthetics, gradients, and visual feedback
+- 🎨 **Expanded Color Palette**: Added white color option
+- 📏 **More Pen Sizes**: Extended range up to 24px
+
+### Bug Fixes
+- Fixed text tool not rendering text on canvas
+- Improved element selection hit detection
+- Better cursor feedback for different tools and resize handles
 
 ## Future Enhancements
 
 Potential features for future versions:
-- Undo/Redo functionality
+- Undo/Redo functionality (Ctrl+Z, Ctrl+Y)
 - Save/Load drawings (JSON export/import)
-- Image export (PNG, SVG)
+- Image export (PNG, SVG, PDF)
 - Eraser tool
 - Fill tool for shapes
+- Multi-select (select multiple elements at once)
 - Layers support
-- More shape options (ellipse, polygon, etc.)
-- Custom color picker
-- Drawing templates
+- More shape options (polygon, star, arrow, etc.)
+- Custom color picker with RGB/HSL values
+- Drawing templates and stencils
+- Keyboard shortcuts for tool switching
 
 ## Contributing
 
