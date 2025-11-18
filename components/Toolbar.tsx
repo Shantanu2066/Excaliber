@@ -13,6 +13,7 @@ interface ToolbarProps {
   zoom: number;
   backgroundColor: string;
   onBackgroundColorChange: (color: string) => void;
+  onSnapshot: () => void;
 }
 
 const tools: { id: Tool; label: string; icon: string }[] = [
@@ -51,6 +52,7 @@ export default function Toolbar({
   zoom,
   backgroundColor,
   onBackgroundColorChange,
+  onSnapshot,
 }: ToolbarProps) {
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-slate-50 to-slate-100 shadow-lg border-b-2 border-slate-200 z-40">
@@ -147,6 +149,16 @@ export default function Toolbar({
 
         {/* Right side - Info */}
         <div className="flex items-center gap-4">
+          {/* Snapshot Button */}
+          <button
+            onClick={onSnapshot}
+            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold text-sm"
+            title="Download current view as image"
+          >
+            <span className="text-lg">📸</span>
+            <span>Snapshot</span>
+          </button>
+
           {/* Zoom Display */}
           <div className="flex items-center gap-2 bg-white rounded-xl shadow-md px-4 py-2.5">
             <label className="text-sm font-bold text-slate-700 tracking-wide">ZOOM</label>

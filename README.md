@@ -118,6 +118,12 @@ npm start
 - **Zoom**: Use mouse wheel to zoom in/out (zoom level shown in toolbar)
 - **Background**: Toggle between Light and Dark modes using the BG buttons
 
+### Capturing and Saving
+- **Snapshot**: Click the green "📸 Snapshot" button in the toolbar
+- Captures the current canvas view exactly as you see it
+- Downloads automatically as a PNG image with timestamp
+- Perfect for saving your work or sharing your drawings
+
 ## Technical Details
 
 ### Performance Optimizations
@@ -182,25 +188,28 @@ For best performance with pen/tablet input, use Chrome or Edge.
 | Enter (in text mode) | Confirm text input |
 | Escape (in text mode) | Cancel text input |
 
-## Recent Updates (v2.0)
+## Recent Updates (v2.1)
 
 ### New Features
 - ✨ **Select Tool**: Click to select, drag to move, resize with handles
 - 📦 **Rectangular Selection**: Drag to select multiple elements at once (like GoodNotes/Notability)
 - 🎯 **Multi-Element Operations**: Move and resize multiple elements together
+- 📸 **Snapshot Feature**: Download current canvas view as PNG with one click
 - 🎨 **Improved Shape Drawing**: Circle and Rectangle now use corner-to-corner drawing (more intuitive)
 - 🌓 **Dark Mode**: Toggle between light and dark backgrounds
-- ✍️ **Fixed Text Tool**: Text now properly renders on canvas with bold font
+- ✍️ **Fixed Text Tool**: Text now properly renders on canvas with bold 24px font
 - 💅 **Enhanced UI**: Redesigned toolbar with better aesthetics, gradients, and visual feedback
 - 🎨 **Expanded Color Palette**: Added white color option
 - 📏 **More Pen Sizes**: Extended range up to 24px
 
 ### Bug Fixes
-- Fixed text tool rendering and input handling
+- Completely fixed text rendering with proper textBaseline setting
+- Fixed text bounds calculation to match text position
 - Improved element selection hit detection with better padding
 - Better cursor feedback for different tools and resize handles
 - Text input now has placeholder and better visibility
 - Rectangular selection with visual feedback (blue semi-transparent overlay)
+- Text font size increased to 24px for better readability
 
 ## Future Enhancements
 

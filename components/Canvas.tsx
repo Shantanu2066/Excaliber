@@ -10,6 +10,7 @@ interface CanvasProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
   backgroundColor: string;
+  onSnapshotRequest: () => void;
 }
 
 type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null;
@@ -20,7 +21,8 @@ export default function Canvas({
   color,
   zoom,
   onZoomChange,
-  backgroundColor
+  backgroundColor,
+  onSnapshotRequest
 }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
@@ -55,13 +57,13 @@ export default function Canvas({
   // Calculate bounds for an element
   const calculateBounds = useCallback((element: DrawingElement): Bounds => {
     if (element.type === 'text' && element.points.length > 0) {
-      const fontSize = element.fontSize || 20;
+      const fontSize = element.fontSize || 24;
       const textWidth = Math.max((element.text || '').length * fontSize * 0.6, 20);
       return {
         x: element.points[0].x,
-        y: element.points[0].y - fontSize,
+        y: element.points[0].y,
         width: textWidth,
-        height: fontSize * 1.4,
+        height: fontSize * 1.2,
       };
     }
 
@@ -240,9 +242,10 @@ export default function Canvas({
         ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         ctx.stroke();
       } else if (element.type === 'text' && element.text) {
-        const fontSize = element.fontSize || 20;
+        const fontSize = element.fontSize || 24;
         ctx.font = `bold ${fontSize}px Arial, sans-serif`;
         ctx.fillStyle = element.color;
+        ctx.textBaseline = 'top';
         ctx.fillText(element.text, element.points[0].x, element.points[0].y);
       }
     });
@@ -310,6 +313,49 @@ export default function Canvas({
 
     ctx.restore();
   }, [elements, currentElement, pan, zoom, selectedElements, selectedTool, backgroundColor, calculateBounds, calculateCombinedBounds, isRectSelecting, selectionRect]);
+
+  // Snapshot function to download current canvas view
+  const takeSnapshot = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    try {
+      // Convert canvas to blob
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
+                          new Date().toLocaleTimeString('en-US', { hour12: false }).replace(/:/g, '-');
+        link.download = `canvas-snapshot-${timestamp}.png`;
+        link.href = url;
+        link.click();
+
+        // Cleanup
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      }, 'image/png');
+    } catch (error) {
+      console.error('Failed to capture snapshot:', error);
+    }
+  }, []);
+
+  // Listen for snapshot requests
+  useEffect(() => {
+    const handleSnapshot = () => {
+      takeSnapshot();
+    };
+
+    // We'll trigger this via the callback prop
+    return () => {};
+  }, [takeSnapshot]);
+
+  // Expose snapshot function via callback
+  useEffect(() => {
+    // Store the snapshot function so parent can call it
+    (window as any).__canvasSnapshot = takeSnapshot;
+  }, [takeSnapshot]);
 
   // Resize canvas to window size
   useEffect(() => {
