@@ -11,6 +11,9 @@ interface CanvasProps {
   onZoomChange: (zoom: number) => void;
   backgroundColor: string;
   onSnapshotRequest: () => void;
+  onHistoryChange?: (canUndo: boolean, canRedo: boolean) => void;
+  undoRequested?: number;
+  redoRequested?: number;
 }
 
 type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null;
@@ -22,7 +25,10 @@ export default function Canvas({
   zoom,
   onZoomChange,
   backgroundColor,
-  onSnapshotRequest
+  onSnapshotRequest,
+  onHistoryChange,
+  undoRequested,
+  redoRequested
 }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
@@ -50,38 +56,57 @@ export default function Canvas({
   const [isRectSelecting, setIsRectSelecting] = useState(false);
   const [selectionRect, setSelectionRect] = useState<{ start: Point; end: Point } | null>(null);
 
-  // Add to history
+  // Add to history - fixed to avoid stale closures
   const addToHistory = useCallback((newElements: DrawingElement[]) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push([...newElements]);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
+    setHistory(prevHistory => {
+      setHistoryIndex(prevIndex => {
+        const newHistory = prevHistory.slice(0, prevIndex + 1);
+        newHistory.push([...newElements]);
+        const newIndex = newHistory.length - 1;
+
+        // Notify parent about history state
+        if (onHistoryChange) {
+          onHistoryChange(newIndex > 0, false);
+        }
+
+        return newIndex;
+      });
+      const newHistory = prevHistory.slice(0, prevHistory.length);
+      newHistory.push([...newElements]);
+      return newHistory;
+    });
     setElements(newElements);
-  }, [history, historyIndex]);
+  }, [onHistoryChange]);
 
-  // Undo/Redo handlers
+  // Handle undo/redo requests from parent
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        // Undo
-        if (historyIndex > 0) {
-          setHistoryIndex(historyIndex - 1);
-          setElements(history[historyIndex - 1]);
-        }
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        // Redo
-        if (historyIndex < history.length - 1) {
-          setHistoryIndex(historyIndex + 1);
-          setElements(history[historyIndex + 1]);
-        }
+    if (undoRequested && historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setElements(history[newIndex]);
+      if (onHistoryChange) {
+        onHistoryChange(newIndex > 0, newIndex < history.length - 1);
       }
-    };
+    }
+  }, [undoRequested]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [history, historyIndex]);
+  useEffect(() => {
+    if (redoRequested && historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setElements(history[newIndex]);
+      if (onHistoryChange) {
+        onHistoryChange(newIndex > 0, newIndex < history.length - 1);
+      }
+    }
+  }, [redoRequested]);
+
+  // Notify parent about initial history state and when history changes
+  useEffect(() => {
+    if (onHistoryChange) {
+      onHistoryChange(historyIndex > 0, historyIndex < history.length - 1);
+    }
+  }, [historyIndex, history.length, onHistoryChange]);
 
   // Transform screen coordinates to canvas coordinates
   const screenToCanvas = useCallback((screenX: number, screenY: number): Point => {
@@ -469,6 +494,31 @@ export default function Canvas({
       return;
     }
 
+    // Eraser mode - only removes freehand strokes
+    if (selectedTool === 'eraser') {
+      setIsDrawing(true);
+      setSelectedElements([]);
+      // Check if clicking on a freehand element to erase it
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const element = elements[i];
+        if (element.type === 'freehand') {
+          // Check if any point in the freehand stroke is within eraser radius
+          const eraserRadius = penSize * 2;
+          for (const point of element.points) {
+            const distance = Math.sqrt(
+              Math.pow(point.x - canvasPoint.x, 2) + Math.pow(point.y - canvasPoint.y, 2)
+            );
+            if (distance <= eraserRadius) {
+              const newElements = elements.filter((_, idx) => idx !== i);
+              addToHistory(newElements);
+              return;
+            }
+          }
+        }
+      }
+      return;
+    }
+
     // Drawing mode
     setIsDrawing(true);
     setSelectedElements([]);
@@ -596,6 +646,27 @@ export default function Canvas({
       }
     }
 
+    // Eraser mode - erase while dragging
+    if (isDrawing && selectedTool === 'eraser') {
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const element = elements[i];
+        if (element.type === 'freehand') {
+          const eraserRadius = penSize * 2;
+          for (const point of element.points) {
+            const distance = Math.sqrt(
+              Math.pow(point.x - canvasPoint.x, 2) + Math.pow(point.y - canvasPoint.y, 2)
+            );
+            if (distance <= eraserRadius) {
+              const newElements = elements.filter((_, idx) => idx !== i);
+              setElements(newElements);
+              break;
+            }
+          }
+        }
+      }
+      return;
+    }
+
     if (!isDrawing || !currentElement) return;
 
     if (currentElement.type === 'freehand') {
@@ -657,6 +728,12 @@ export default function Canvas({
       addToHistory(newElements);
       setCurrentElement(null);
     }
+
+    // Eraser mode - add to history when done erasing
+    if (isDrawing && selectedTool === 'eraser') {
+      addToHistory(elements);
+    }
+
     setIsDrawing(false);
   };
 
@@ -688,6 +765,7 @@ export default function Canvas({
       selectedTool === 'pan' ? 'grab' :
       selectedTool === 'select' ? 'default' :
       selectedTool === 'text' ? 'text' :
+      selectedTool === 'eraser' ? 'crosshair' :
       'crosshair';
   }, [selectedTool]);
 
