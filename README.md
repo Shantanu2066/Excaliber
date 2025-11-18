@@ -35,6 +35,19 @@ A high-performance web-based canvas application built with Next.js, featuring fr
 - Default zoom set at 100%
 - Dynamic grid background that adapts to zoom level
 
+### ↩️ Undo/Redo System
+- **Undo**: Ctrl+Z (Cmd+Z on Mac) - Revert your last action
+- **Redo**: Ctrl+Y or Ctrl+Shift+Z (Cmd+Y or Cmd+Shift+Z on Mac) - Restore undone action
+- Full history management for all drawing operations
+- Works with drawing, moving, resizing, and text operations
+
+### 🔍 OCR (Text Recognition)
+- **Extract handwritten text** from your canvas using AI-powered OCR
+- Click the purple **"🔍 OCR"** button in the toolbar
+- Automatically recognizes text and copies it to clipboard
+- Perfect for converting handwritten notes to digital text
+- Uses Tesseract.js for client-side text recognition
+
 ### 🎨 Customization Options
 - **Pen Sizes**: Choose from 2px, 4px, 6px, 8px, 12px, 16px, 20px, or 24px
 - **Color Palette**: 11 predefined colors including:
@@ -124,6 +137,13 @@ npm start
 - Downloads automatically as a PNG image with timestamp
 - Perfect for saving your work or sharing your drawings
 
+### OCR (Text Recognition)
+- **Extract Text**: Click the purple "🔍 OCR" button in the toolbar
+- The AI will analyze your canvas and extract any handwritten or typed text
+- Recognized text is automatically copied to your clipboard
+- Works best with clear, large handwriting
+- Great for converting handwritten notes to digital text format
+
 ## Technical Details
 
 ### Performance Optimizations
@@ -178,6 +198,8 @@ For best performance with pen/tablet input, use Chrome or Edge.
 
 | Shortcut | Action |
 |----------|--------|
+| Ctrl+Z (Cmd+Z) | Undo last action |
+| Ctrl+Y or Ctrl+Shift+Z (Cmd+Y) | Redo action |
 | Shift + Click & Drag | Pan the canvas |
 | Middle Mouse Button + Drag | Pan the canvas |
 | Mouse Wheel | Zoom in/out |
@@ -188,7 +210,21 @@ For best performance with pen/tablet input, use Chrome or Edge.
 | Enter (in text mode) | Confirm text input |
 | Escape (in text mode) | Cancel text input |
 
-## Recent Updates (v2.1)
+## Recent Updates (v2.2)
+
+### New Features
+- ↩️ **Undo/Redo System**: Full history management with Ctrl+Z and Ctrl+Y keyboard shortcuts
+- 🔍 **OCR (Text Recognition)**: Extract handwritten text from canvas using AI-powered Tesseract.js
+- ✍️ **Text Tool Fix**: Completely rewrote text feature with simpler state management and proper rendering
+- 🎨 **Toolbar Visibility**: Fixed z-index to ensure toolbar stays visible at all zoom levels
+
+### Bug Fixes
+- Text now properly renders with textBaseline='top' for consistent positioning
+- Text input uses controlled component with simple state management
+- All drawing operations now properly integrate with history for undo/redo
+- Toolbar z-index increased to z-[9999] to prevent visibility issues
+
+## Previous Updates (v2.1)
 
 ### New Features
 - ✨ **Select Tool**: Click to select, drag to move, resize with handles
@@ -197,13 +233,12 @@ For best performance with pen/tablet input, use Chrome or Edge.
 - 📸 **Snapshot Feature**: Download current canvas view as PNG with one click
 - 🎨 **Improved Shape Drawing**: Circle and Rectangle now use corner-to-corner drawing (more intuitive)
 - 🌓 **Dark Mode**: Toggle between light and dark backgrounds
-- ✍️ **Fixed Text Tool**: Text now properly renders on canvas with bold 24px font
 - 💅 **Enhanced UI**: Redesigned toolbar with better aesthetics, gradients, and visual feedback
 - 🎨 **Expanded Color Palette**: Added white color option
 - 📏 **More Pen Sizes**: Extended range up to 24px
 
 ### Bug Fixes
-- Completely fixed text rendering with proper textBaseline setting
+- Fixed text rendering with proper textBaseline setting
 - Fixed text bounds calculation to match text position
 - Improved element selection hit detection with better padding
 - Better cursor feedback for different tools and resize handles
@@ -214,17 +249,16 @@ For best performance with pen/tablet input, use Chrome or Edge.
 ## Future Enhancements
 
 Potential features for future versions:
-- Undo/Redo functionality (Ctrl+Z, Ctrl+Y)
 - Save/Load drawings (JSON export/import)
-- Image export (PNG, SVG, PDF)
+- Image export (SVG, PDF formats)
 - Eraser tool
 - Fill tool for shapes
-- Multi-select (select multiple elements at once)
 - Layers support
 - More shape options (polygon, star, arrow, etc.)
 - Custom color picker with RGB/HSL values
 - Drawing templates and stencils
 - Keyboard shortcuts for tool switching
+- Improved OCR accuracy for cursive handwriting
 
 ## Contributing
 

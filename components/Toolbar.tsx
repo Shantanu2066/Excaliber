@@ -14,6 +14,7 @@ interface ToolbarProps {
   backgroundColor: string;
   onBackgroundColorChange: (color: string) => void;
   onSnapshot: () => void;
+  onOCR: () => void;
 }
 
 const tools: { id: Tool; label: string; icon: string }[] = [
@@ -53,9 +54,10 @@ export default function Toolbar({
   backgroundColor,
   onBackgroundColorChange,
   onSnapshot,
+  onOCR,
 }: ToolbarProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-slate-50 to-slate-100 shadow-lg border-b-2 border-slate-200 z-40">
+    <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-slate-50 to-slate-100 shadow-lg border-b-2 border-slate-200 z-[9999]">
       <div className="flex items-center justify-between gap-6 px-6 py-4">
         {/* Left side - Tools */}
         <div className="flex items-center gap-3">
@@ -157,6 +159,16 @@ export default function Toolbar({
           >
             <span className="text-lg">📸</span>
             <span>Snapshot</span>
+          </button>
+
+          {/* OCR Button */}
+          <button
+            onClick={onOCR}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold text-sm"
+            title="Extract text from handwriting (OCR)"
+          >
+            <span className="text-lg">🔍</span>
+            <span>OCR</span>
           </button>
 
           {/* Zoom Display */}
